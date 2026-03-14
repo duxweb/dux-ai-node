@@ -24,6 +24,7 @@ use tao::event::{Event, StartCause, WindowEvent};
 use tao::event_loop::{ControlFlow, EventLoop, EventLoopBuilder, EventLoopProxy};
 use tao::window::{Window, WindowBuilder};
 use tokio::task::JoinHandle;
+use tokio::time::{sleep, Duration};
 use tray_icon::menu::{CheckMenuItem, Menu, MenuEvent, MenuItem, PredefinedMenuItem, Submenu};
 
 #[cfg(target_os = "macos")]
@@ -675,8 +676,18 @@ fn spawn_runtime_task(
 
     let state = state.clone();
     let runner = tokio::spawn(async move {
-        let config = state.config.lock().map(|item| item.clone()).unwrap_or_default();
-        let _ = run_runtime_with_updates(config, Some(runtime_tx)).await;
+        loop {
+            let config = state.config.lock().map(|item| item.clone()).unwrap_or_default();
+            let auto_connect = config.auto_connect;
+            let result = run_runtime_with_updates(config, Some(runtime_tx.clone())).await;
+            if let Err(error) = result {
+                let _ = runtime_tx.send(RuntimeUpdate::Error(error.to_string()));
+            }
+            if !auto_connect {
+                break;
+            }
+            sleep(Duration::from_secs(3)).await;
+        }
     });
 
     *runtime_tasks = Some((forwarder, runner));
@@ -858,8 +869,12 @@ fn build_menu(state: &SharedState) -> Result<(Menu, TrayMenuItems)> {
     let open_connection_log =
         MenuItem::with_id("action.open_connection_log", "连接日志", true, None);
     let open_log_dir = MenuItem::with_id("action.open_log_dir", "日志目录", true, None);
-    let logs =
-        Submenu::with_items("日志", true, &[&open_node_log, &open_connection_log, &open_log_dir])?;
+    let clear_logs = MenuItem::with_id("action.clear_logs", "清空日志", true, None);
+    let logs = Submenu::with_items(
+        "日志",
+        true,
+        &[&open_node_log, &open_connection_log, &open_log_dir, &clear_logs],
+    )?;
 
     let about = MenuItem::with_id("action.about", "关于", true, None);
 

@@ -132,12 +132,19 @@ pub async fn run_runtime_with_updates(
 
     publish_status(&mut writer, &config, None).await?;
 
-    let initial_snapshot = fetch_device_snapshot(&config).await.ok();
+    let initial_snapshot = match fetch_device_snapshot(&config).await {
+        Ok(snapshot) => Some(snapshot),
+        Err(error) => {
+            warn!(error = %error, "failed to fetch initial device snapshot");
+            None
+        }
+    };
+    let mut last_latency_ms = initial_snapshot.as_ref().and_then(|item| item.latency_ms);
     if let Some(tx) = &updates {
         let _ = tx.send(RuntimeUpdate::Status(status_from_snapshot(
             &config,
             initial_snapshot.as_ref(),
-            None,
+            last_latency_ms,
         )));
     }
 
@@ -158,8 +165,15 @@ pub async fn run_runtime_with_updates(
                 last_ping_at = Some(Instant::now());
             }
             _ = status_timer.tick() => {
-                let snapshot = fetch_device_snapshot(&config).await.ok();
-                let latency = snapshot.as_ref().and_then(|item| item.latency_ms);
+                let snapshot = match fetch_device_snapshot(&config).await {
+                    Ok(snapshot) => Some(snapshot),
+                    Err(error) => {
+                        warn!(error = %error, "failed to fetch device snapshot");
+                        None
+                    }
+                };
+                let latency = snapshot.as_ref().and_then(|item| item.latency_ms).or(last_latency_ms);
+                last_latency_ms = latency;
                 publish_status(&mut writer, &config, latency).await?;
                 if let Some(tx) = &updates {
                     let _ = tx.send(RuntimeUpdate::Status(status_from_snapshot(&config, snapshot.as_ref(), latency)));
@@ -173,7 +187,7 @@ pub async fn run_runtime_with_updates(
             incoming = reader.next() => {
                 match incoming {
                     Some(Ok(Message::Text(text))) => {
-                        handle_ws_text(&text, &config, &updates, &mut last_ping_at).await?;
+                        handle_ws_text(&text, &config, &updates, &mut last_ping_at, &mut last_latency_ms).await?;
                     }
                     Some(Ok(Message::Ping(bytes))) => {
                         writer.send(Message::Pong(bytes)).await.ok();
@@ -341,6 +355,7 @@ async fn handle_ws_text(
     config: &NodeConfig,
     updates: &Option<mpsc::UnboundedSender<RuntimeUpdate>>,
     last_ping_at: &mut Option<Instant>,
+    last_latency_ms: &mut Option<u64>,
 ) -> anyhow::Result<()> {
     let Ok(payload) = serde_json::from_str::<Value>(text) else {
         warn!(raw = text, "received non-json websocket payload");
@@ -350,10 +365,13 @@ async fn handle_ws_text(
     match msg_type {
         "pong" => {
             let latency_ms = last_ping_at.take().map(|item| item.elapsed().as_millis() as u64);
+            if latency_ms.is_some() {
+                *last_latency_ms = latency_ms;
+            }
             info!(payload = %payload, latency_ms = ?latency_ms, "received pong");
             if let Some(tx) = updates {
                 let _ =
-                    tx.send(RuntimeUpdate::Status(status_from_snapshot(config, None, latency_ms)));
+                    tx.send(RuntimeUpdate::Status(status_from_snapshot(config, None, *last_latency_ms)));
             }
         }
         "ack" => info!(payload = %payload, "received ack"),
