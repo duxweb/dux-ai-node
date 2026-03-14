@@ -739,8 +739,8 @@ fn open_in_system(path: &std::path::Path) -> Result<()> {
     if cfg!(target_os = "macos") {
         std::process::Command::new("open").arg(path).spawn().context("failed to open path")?;
     } else if cfg!(target_os = "windows") {
-        std::process::Command::new("cmd")
-            .args(["/C", "start", "", &path.to_string_lossy()])
+        std::process::Command::new("explorer")
+            .arg(path)
             .spawn()
             .context("failed to open path")?;
     } else {
@@ -753,8 +753,8 @@ fn open_url(url: &str) -> Result<()> {
     if cfg!(target_os = "macos") {
         std::process::Command::new("open").arg(url).spawn().context("failed to open url")?;
     } else if cfg!(target_os = "windows") {
-        std::process::Command::new("cmd")
-            .args(["/C", "start", "", url])
+        std::process::Command::new("rundll32")
+            .args(["url.dll,FileProtocolHandler", url])
             .spawn()
             .context("failed to open url")?;
     } else {
@@ -882,8 +882,8 @@ fn build_menu(state: &SharedState) -> Result<(Menu, TrayMenuItems)> {
         let permissions = MenuItem::with_id("action.permissions", "权限引导", true, None);
         menu.append(&permissions)?;
     }
-    menu.append(&about)?;
     menu.append(&settings)?;
+    menu.append(&about)?;
     menu.append(&PredefinedMenuItem::separator())?;
     menu.append(&quit)?;
 

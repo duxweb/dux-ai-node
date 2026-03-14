@@ -538,19 +538,6 @@ fn build_ws_urls(config: &NodeConfig) -> anyhow::Result<Vec<Url>> {
         format!("ws://{}", base)
     };
     let mut items: Vec<Url> = Vec::new();
-    let localhost_candidates = ["ws://127.0.0.1:9504/ws", "ws://localhost:9504/ws"];
-    for raw in localhost_candidates {
-        if let Ok(mut url) = Url::parse(raw) {
-            url.query_pairs_mut()
-                .append_pair("app", "ai.node")
-                .append_pair("client_id", config.client_id.trim())
-                .append_pair("device_id", config.device_id.trim())
-                .append_pair("token", config.device_id.trim());
-            if !items.iter().any(|item| item.as_str() == url.as_str()) {
-                items.push(url);
-            }
-        }
-    }
 
     let mut primary = Url::parse(&format!("{}/ws", ws_base.trim_end_matches('/')))
         .context("invalid primary ws url")?;
