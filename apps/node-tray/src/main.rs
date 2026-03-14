@@ -863,7 +863,7 @@ fn build_menu(state: &SharedState) -> Result<(Menu, TrayMenuItems)> {
 
     let about = MenuItem::with_id("action.about", "关于", true, None);
 
-    let settings = MenuItem::with_id("action.settings", "节点设置", true, None);
+    let settings = MenuItem::with_id("action.settings", "设置", true, None);
     let quit = MenuItem::with_id("action.quit", "退出", true, None);
 
     menu.append(&status)?;
@@ -877,13 +877,13 @@ fn build_menu(state: &SharedState) -> Result<(Menu, TrayMenuItems)> {
     menu.append(&PredefinedMenuItem::separator())?;
     menu.append(&node_info)?;
     menu.append(&logs)?;
-    menu.append(&settings)?;
     #[cfg(target_os = "macos")]
     {
         let permissions = MenuItem::with_id("action.permissions", "权限引导", true, None);
         menu.append(&permissions)?;
     }
     menu.append(&about)?;
+    menu.append(&settings)?;
     menu.append(&PredefinedMenuItem::separator())?;
     menu.append(&quit)?;
 
@@ -968,7 +968,7 @@ fn menu_snapshot(state: &SharedState) -> MenuSnapshot {
     };
     let client_id = if config.client_id.trim().is_empty() {
         if status.client_id.trim().is_empty() {
-            "".to_string()
+            "未分配".to_string()
         } else {
             status.client_id
         }
