@@ -1,0 +1,35 @@
+[workspace]
+members = [
+  "crates/core",
+  "crates/browser",
+  "crates/platform",
+  "apps/node-daemon",
+  "apps/node-tray",
+]
+resolver = "2"
+
+[workspace.package]
+edition = "2021"
+version = "0.1.0"
+authors = ["OpenAI"]
+license = "MIT"
+
+[workspace.dependencies]
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+directories = "5"
+futures-util = "0.3"
+image = { version = "0.25", default-features = false, features = ["png"] }
+minijinja = { version = "2", features = ["loader", "json"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "signal", "sync", "time"] }
+tokio-tungstenite = { version = "0.24", features = ["rustls-tls-webpki-roots"] }
+toml = "0.8"
+tracing = "0.1"
+tracing-appender = "0.2"
+tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter"] }
+url = "2"
+uuid = { version = "1", features = ["v7", "serde"] }

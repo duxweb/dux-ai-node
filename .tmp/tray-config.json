@@ -1,0 +1,7 @@
+{
+  "app_name": "dux-ai-node",
+  "data_dir": "/Users/lixinhua/.dux-ai-node",
+  "control_socket": "127.0.0.1:4600",
+  "api_endpoint": "http://127.0.0.1:8787",
+  "log_level": "info"
+}

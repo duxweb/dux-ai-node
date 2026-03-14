@@ -1,0 +1,120 @@
+name: build-node
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: ./scripts/build-linux.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dux-ai-node-linux-x86_64
+          path: |
+            dist/linux/x86_64-unknown-linux-gnu
+            dist/linux/dux-ai-node-x86_64-unknown-linux-gnu.tar.gz
+      - if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/linux/dux-ai-node-x86_64-unknown-linux-gnu.tar.gz
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: ./scripts/build-windows.ps1
+        shell: pwsh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dux-ai-node-windows-x86_64
+          path: |
+            dist/windows/x86_64-pc-windows-msvc
+            dist/windows/dux-ai-node-x86_64-pc-windows-msvc.zip
+      - if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/windows/dux-ai-node-x86_64-pc-windows-msvc.zip
+
+  macos-intel:
+    runs-on: macos-13
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: ./scripts/build-macos-app.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dux-ai-node-macos-x86_64
+          path: |
+            dist/Dux AI Node.app
+            dist/Dux-AI-Node-macos-x86_64.zip
+      - if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/Dux-AI-Node-macos-x86_64.zip
+
+  macos-arm64:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: ./scripts/build-macos-app.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dux-ai-node-macos-arm64
+          path: |
+            dist/Dux AI Node.app
+            dist/Dux-AI-Node-macos-arm64.zip
+      - if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/Dux-AI-Node-macos-arm64.zip

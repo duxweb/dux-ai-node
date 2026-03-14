@@ -1,0 +1,15 @@
+[package]
+name = "dux-ai-node-daemon"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+clap.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+toml.workspace = true
+tracing.workspace = true
+dux-ai-node-core = { path = "../../crates/core" }
+dux-ai-node-browser = { path = "../../crates/browser" }
+dux-ai-node-platform = { path = "../../crates/platform" }

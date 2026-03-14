@@ -1,0 +1,92 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset='utf-8'>
+  <meta name='viewport' content='width=device-width, initial-scale=1'>
+  <title>Dux AI Node 设置</title>
+  <style>{{ app_css|safe }}</style>
+</head>
+<body>
+  <div class="window">
+    <form action='dux://save' method='get' class="page-form">
+      <div class="section-label">连接</div>
+      <div class="group">
+        <label class="row">
+          <span class="row-label">服务器地址</span>
+          <input class="row-input" name='server_url' value='{{server_url}}' placeholder='https://ai.example.com'>
+        </label>
+        <label class="row">
+          <span class="row-label">节点名称</span>
+          <input class="row-input" name='client_name' value='{{client_name}}'>
+        </label>
+        <div class="row">
+          <span class="row-label">连接 ID</span>
+          <input class="row-input row-input-ro" value='{{client_id}}' readonly>
+        </div>
+        <div class="row">
+          <span class="row-label">设备 ID</span>
+          <input class="row-input row-input-ro" value='{{device_id}}' readonly>
+        </div>
+      </div>
+
+      <div class="section-label">偏好</div>
+      <div class="group">
+        <label class="row">
+          <span class="row-label">浏览器</span>
+          <select class="row-select" name='browser_preference'>
+            <option value='auto' {{auto_pref}}>自动</option>
+            <option value='chrome' {{chrome_pref}}>Chrome</option>
+            <option value='msedge' {{edge_pref}}>Edge</option>
+          </select>
+        </label>
+        <label class="row">
+          <span class="row-label">浏览器模式</span>
+          <select class="row-select" name='browser_mode'>
+            <option value='headless' {{headless_mode}}>无头</option>
+            <option value='headed' {{headed_mode}}>前台</option>
+          </select>
+        </label>
+        <label class="row">
+          <span class="row-label">自动连接</span>
+          <select class="row-select" name='auto_connect'>
+            <option value='true' {{auto_yes}}>开启</option>
+            <option value='false' {{auto_no}}>关闭</option>
+          </select>
+        </label>
+        <label class="row">
+          <span class="row-label">日志等级</span>
+          <select class="row-select" name='log_level'>
+            <option value='info' {{log_info}}>info</option>
+            <option value='debug' {{log_debug}}>debug</option>
+            <option value='warn' {{log_warn}}>warn</option>
+            <option value='error' {{log_error}}>error</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="section-label">状态</div>
+      <div class="group">
+        <div class="row">
+          <span class="row-label">连接状态</span>
+          <span class="row-value">{{connected}}</span>
+        </div>
+        <div class="row">
+          <span class="row-label">最近延迟</span>
+          <span class="row-value">{{latency}}</span>
+        </div>
+        <div class="row">
+          <span class="row-label">绑定状态</span>
+          <span class="row-value">{{binding}}</span>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn btn-primary" type='submit'>保存</button>
+        <a class="btn" href='dux://open-permissions'>权限引导</a>
+      </div>
+
+      <p class="footnote">保存后立即生效。需要系统授权时请通过「权限引导」处理。</p>
+    </form>
+  </div>
+</body>
+</html>

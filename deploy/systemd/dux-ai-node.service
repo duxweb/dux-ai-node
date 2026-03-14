@@ -1,0 +1,15 @@
+[Unit]
+Description=Dux AI Node Daemon
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/.config/plus/dux/dux-ai-node
+ExecStart=/usr/local/bin/dux-ai-node-daemon daemon
+Restart=always
+RestartSec=3
+Environment=RUST_LOG=info
+
+[Install]
+WantedBy=default.target

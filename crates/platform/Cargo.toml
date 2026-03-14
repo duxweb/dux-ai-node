@@ -1,0 +1,15 @@
+[package]
+name = "dux-ai-node-platform"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+directories.workspace = true
+serde.workspace = true
+tracing.workspace = true
+dux-ai-node-core = { path = "../core" }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+cocoa = "0.26"
+core-graphics = "0.24"

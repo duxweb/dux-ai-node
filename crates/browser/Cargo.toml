@@ -1,0 +1,21 @@
+[package]
+name = "dux-ai-node-browser"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+base64 = "0.22"
+chromiumoxide = "0.9.1"
+dux-ai-node-core = { path = "../core" }
+dux-ai-node-platform = { path = "../platform" }
+enigo = "0.6.1"
+futures-util.workspace = true
+once_cell = "1"
+screenshots = "0.8"
+serde.workspace = true
+serde_json.workspace = true
+sysinfo = "0.33"
+tokio.workspace = true
+tracing.workspace = true
+wait-timeout = "0.2"
