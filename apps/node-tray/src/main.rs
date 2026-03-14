@@ -1016,8 +1016,44 @@ fn build_icon() -> Result<Icon> {
     let image = image::load_from_memory_with_format(png, ImageFormat::Png)
         .context("failed to decode tray icon")?
         .into_rgba8();
+    let image = if cfg!(target_os = "windows") {
+        trim_transparent_bounds(image)
+            .resize_exact(32, 32, image::imageops::FilterType::Lanczos3)
+            .into_rgba8()
+    } else {
+        image
+    };
     let (width, height) = image.dimensions();
     Icon::from_rgba(image.into_raw(), width, height).context("failed to build tray icon")
+}
+
+fn trim_transparent_bounds(image: image::RgbaImage) -> image::DynamicImage {
+    let (width, height) = image.dimensions();
+    let mut min_x = width;
+    let mut min_y = height;
+    let mut max_x = 0;
+    let mut max_y = 0;
+    let mut found = false;
+
+    for y in 0..height {
+        for x in 0..width {
+            if image.get_pixel(x, y)[3] == 0 {
+                continue;
+            }
+            found = true;
+            min_x = min_x.min(x);
+            min_y = min_y.min(y);
+            max_x = max_x.max(x);
+            max_y = max_y.max(y);
+        }
+    }
+
+    if !found {
+        return image::DynamicImage::ImageRgba8(image);
+    }
+
+    image::DynamicImage::ImageRgba8(image)
+        .crop_imm(min_x, min_y, max_x - min_x + 1, max_y - min_y + 1)
 }
 
 fn render_settings_html(state: &SharedState) -> String {

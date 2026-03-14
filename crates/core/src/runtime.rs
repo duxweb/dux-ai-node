@@ -55,9 +55,13 @@ static OUTBOUND_TX: Lazy<Mutex<Option<mpsc::UnboundedSender<Value>>>> =
 
 pub async fn ensure_registration(config: &mut NodeConfig) -> anyhow::Result<DeviceRegistration> {
     let server_url = config.server_url.trim();
-    let api_token = config.token.trim();
+    let api_token = if config.token.trim().is_empty() {
+        config.device_id.trim()
+    } else {
+        config.token.trim()
+    };
     if server_url.is_empty() || api_token.is_empty() {
-        anyhow::bail!("server_url and token are required before registration");
+        anyhow::bail!("server_url and device_id/token are required before registration");
     }
 
     let client = Client::builder().build().context("failed to build reqwest client")?;
@@ -437,9 +441,13 @@ fn status_from_snapshot(
 
 async fn fetch_device_snapshot(config: &NodeConfig) -> anyhow::Result<DeviceRegistration> {
     let server_url = config.server_url.trim();
-    let api_token = config.token.trim();
+    let api_token = if config.token.trim().is_empty() {
+        config.device_id.trim()
+    } else {
+        config.token.trim()
+    };
     if server_url.is_empty() || api_token.is_empty() {
-        anyhow::bail!("server_url and token are required before fetching device snapshot");
+        anyhow::bail!("server_url and device_id/token are required before fetching device snapshot");
     }
 
     let url = format!("{}/agent/v1/devices", server_url.trim_end_matches('/'));

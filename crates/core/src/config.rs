@@ -109,6 +109,17 @@ pub struct NodePaths {
 }
 
 pub fn node_paths() -> anyhow::Result<NodePaths> {
+    #[cfg(target_os = "windows")]
+    {
+        let config_root = std::env::var("APPDATA").context("APPDATA is not set")?;
+        let data_root = std::env::var("LOCALAPPDATA").context("LOCALAPPDATA is not set")?;
+        let config_dir = PathBuf::from(config_root).join("DuxAINode");
+        let data_dir = PathBuf::from(data_root).join("DuxAINode");
+        let log_dir = data_dir.join("logs");
+        let config_file = config_dir.join("config.toml");
+        return Ok(NodePaths { config_dir, data_dir, log_dir, config_file });
+    }
+
     let dirs = ProjectDirs::from("plus", "dux", "dux-ai-node")
         .ok_or_else(|| anyhow::anyhow!("unable to resolve project directories"))?;
     let config_dir = dirs.config_dir().to_path_buf();
