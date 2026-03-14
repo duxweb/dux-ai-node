@@ -1,5 +1,5 @@
 [package]
-name = "dux-ai-node-tray"
+name = "dux-ai-node"
 version.workspace = true
 edition.workspace = true
 

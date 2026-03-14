@@ -7,7 +7,7 @@ APP_DIR="$ROOT/dist/${APP_NAME}.app"
 CONTENTS_DIR="$APP_DIR/Contents"
 MACOS_DIR="$CONTENTS_DIR/MacOS"
 RESOURCES_DIR="$CONTENTS_DIR/Resources"
-BIN="$ROOT/target/release/dux-ai-node-tray"
+BIN="$ROOT/target/release/dux-ai-node"
 AX_HELPER_DIR="$ROOT/helpers/macos-ax-helper"
 AX_HELPER_BIN="$AX_HELPER_DIR/.build/release/dux-node-macos-ax-helper"
 ICON="$ROOT/assets/icon.icns"
@@ -25,12 +25,12 @@ if [[ -z "$SWIFT_BIN" || ! -x "$SWIFT_BIN" ]]; then
 fi
 
 mkdir -p "$ROOT/dist"
-cargo build --release -p dux-ai-node-tray
+cargo build --release -p dux-ai-node
 swift build --configuration release --package-path "$AX_HELPER_DIR"
 rm -rf "$APP_DIR"
 RUNTIME_HELPER_DIR="$RESOURCES_DIR/runtime/helpers"
 mkdir -p "$MACOS_DIR" "$RESOURCES_DIR" "$RUNTIME_HELPER_DIR"
-cp "$BIN" "$MACOS_DIR/dux-ai-node-tray"
+cp "$BIN" "$MACOS_DIR/dux-ai-node"
 cp "$AX_HELPER_BIN" "$RUNTIME_HELPER_DIR/dux-node-macos-ax-helper"
 chmod +x "$RUNTIME_HELPER_DIR/dux-node-macos-ax-helper"
 cp "$ICON" "$RESOURCES_DIR/icon.icns"
@@ -44,7 +44,7 @@ cat > "$CONTENTS_DIR/Info.plist" <<PLIST
   <key>CFBundleDevelopmentRegion</key>
   <string>zh_CN</string>
   <key>CFBundleExecutable</key>
-  <string>dux-ai-node-tray</string>
+  <string>dux-ai-node</string>
   <key>CFBundleIdentifier</key>
   <string>plus.dux.ai.node</string>
   <key>CFBundleIconFile</key>

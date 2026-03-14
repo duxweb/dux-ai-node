@@ -836,6 +836,28 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "92773504d58c093f6de2459af4af33faa518c13451eb8f2b5698ed3d36e7c813"
 
 [[package]]
+name = "dux-ai-node"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "cocoa",
+ "dux-ai-node-browser",
+ "dux-ai-node-core",
+ "dux-ai-node-platform",
+ "image 0.25.10",
+ "minijinja",
+ "serde_json",
+ "tao",
+ "tokio",
+ "tracing",
+ "tray-icon",
+ "url",
+ "winresource",
+ "wry",
+]
+
+[[package]]
 name = "dux-ai-node-browser"
 version = "0.1.0"
 dependencies = [
@@ -905,28 +927,6 @@ dependencies = [
  "dux-ai-node-core",
  "serde",
  "tracing",
-]
-
-[[package]]
-name = "dux-ai-node-tray"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "clap",
- "cocoa",
- "dux-ai-node-browser",
- "dux-ai-node-core",
- "dux-ai-node-platform",
- "image 0.25.10",
- "minijinja",
- "serde_json",
- "tao",
- "tokio",
- "tracing",
- "tray-icon",
- "url",
- "winresource",
- "wry",
 ]
 
 [[package]]

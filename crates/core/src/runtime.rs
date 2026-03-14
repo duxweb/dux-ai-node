@@ -465,7 +465,7 @@ async fn fetch_device_snapshot(config: &NodeConfig) -> anyhow::Result<DeviceRegi
 
 pub fn status_snapshot(config: &NodeConfig) -> RuntimeStatus {
     let client_id = if config.client_id.trim().is_empty() {
-        config.device_id.clone()
+        String::new()
     } else {
         config.client_id.clone()
     };

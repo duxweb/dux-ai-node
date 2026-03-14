@@ -1,3 +1,5 @@
+#![cfg_attr(all(target_os = "windows", not(debug_assertions)), windows_subsystem = "windows")]
+
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use dux_ai_node_browser::{browser_runtime, execute_action, shutdown_browser_runtime};
@@ -12,8 +14,8 @@ use dux_ai_node_core::{
 };
 use image::ImageFormat;
 use minijinja::{context, Environment};
+#[cfg(target_os = "windows")]
 use std::fs;
-use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use tao::dpi::LogicalSize;
 use tao::event::{Event, StartCause, WindowEvent};
@@ -27,6 +29,8 @@ use tao::platform::macos::{ActivationPolicy, EventLoopExtMacOS, EventLoopWindowT
 use tray_icon::{Icon, TrayIconBuilder};
 use url::Url;
 use wry::WebViewBuilder;
+#[cfg(target_os = "windows")]
+use wry::WebContext;
 
 use dux_ai_node_platform::{
     clear_log_files, current_application_path, install_launch_agent, launch_agent_installed,
@@ -35,7 +39,7 @@ use dux_ai_node_platform::{
 };
 
 #[derive(Parser, Debug)]
-#[command(name = "dux-ai-node-tray", about = "Dux AI node tray")]
+#[command(name = "dux-ai-node", about = "Dux AI node tray")]
 struct Cli {
     #[arg(long)]
     config: Option<std::path::PathBuf>,
@@ -176,6 +180,12 @@ fn run_tray(config_path: std::path::PathBuf, config: NodeConfig) -> Result<()> {
     let mut permissions_webview: Option<wry::WebView> = None;
     let mut about_window: Option<Window> = None;
     let mut about_webview: Option<wry::WebView> = None;
+    #[cfg(target_os = "windows")]
+    let mut settings_context = Some(WebContext::new(Some(webview_data_dir("settings"))));
+    #[cfg(target_os = "windows")]
+    let mut permissions_context = Some(WebContext::new(Some(webview_data_dir("permissions"))));
+    #[cfg(target_os = "windows")]
+    let mut about_context = Some(WebContext::new(Some(webview_data_dir("about"))));
     let mut runtime_tasks: Option<(JoinHandle<()>, JoinHandle<()>)> = None;
 
     let menu_channel = MenuEvent::receiver();
@@ -360,7 +370,17 @@ fn run_tray(config_path: std::path::PathBuf, config: NodeConfig) -> Result<()> {
                     let html = render_settings_html(&state);
                     let nav_state = state.clone();
                     let nav_proxy = proxy.clone();
-                    let webview = WebViewBuilder::new(&window)
+                    #[cfg(not(target_os = "windows"))]
+                    let builder = WebViewBuilder::new(&window);
+                    #[cfg(target_os = "windows")]
+                    let mut builder = WebViewBuilder::new(&window);
+                    #[cfg(target_os = "windows")]
+                    {
+                        if let Some(context) = settings_context.as_mut() {
+                            builder = builder.with_web_context(context);
+                        }
+                    }
+                    let webview = builder
                         .with_navigation_handler(move |url| {
                             handle_navigation(&nav_state, &nav_proxy, url)
                         })
@@ -376,6 +396,10 @@ fn run_tray(config_path: std::path::PathBuf, config: NodeConfig) -> Result<()> {
                 }
             }
             Event::UserEvent(UserEvent::ShowPermissions) => {
+                #[cfg(target_os = "windows")]
+                {
+                    return;
+                }
                 if permissions_webview.is_some() {
                     drop(permissions_webview.take());
                     drop(permissions_window.take());
@@ -391,7 +415,17 @@ fn run_tray(config_path: std::path::PathBuf, config: NodeConfig) -> Result<()> {
                     let html = render_permissions_html();
                     let nav_state = state.clone();
                     let nav_proxy = proxy.clone();
-                    let webview = WebViewBuilder::new(&window)
+                    #[cfg(not(target_os = "windows"))]
+                    let builder = WebViewBuilder::new(&window);
+                    #[cfg(target_os = "windows")]
+                    let mut builder = WebViewBuilder::new(&window);
+                    #[cfg(target_os = "windows")]
+                    {
+                        if let Some(context) = permissions_context.as_mut() {
+                            builder = builder.with_web_context(context);
+                        }
+                    }
+                    let webview = builder
                         .with_navigation_handler(move |url| {
                             handle_navigation(&nav_state, &nav_proxy, url)
                         })
@@ -413,14 +447,24 @@ fn run_tray(config_path: std::path::PathBuf, config: NodeConfig) -> Result<()> {
                 if about_webview.is_none() {
                     let window = WindowBuilder::new()
                         .with_title("关于 Dux AI Node")
-                        .with_inner_size(LogicalSize::new(640.0, 420.0))
+                        .with_inner_size(LogicalSize::new(640.0, 500.0))
                         .with_visible(true)
                         .build(event_loop)
                         .expect("failed to build about window");
 
                     let nav_state = state.clone();
                     let nav_proxy = proxy.clone();
-                    let webview = WebViewBuilder::new(&window)
+                    #[cfg(not(target_os = "windows"))]
+                    let builder = WebViewBuilder::new(&window);
+                    #[cfg(target_os = "windows")]
+                    let mut builder = WebViewBuilder::new(&window);
+                    #[cfg(target_os = "windows")]
+                    {
+                        if let Some(context) = about_context.as_mut() {
+                            builder = builder.with_web_context(context);
+                        }
+                    }
+                    let webview = builder
                         .with_navigation_handler(move |url| {
                             handle_navigation(&nav_state, &nav_proxy, url)
                         })
@@ -824,7 +868,6 @@ fn build_menu(state: &SharedState) -> Result<(Menu, TrayMenuItems)> {
     let about = MenuItem::with_id("action.about", "关于", true, None);
 
     let settings = MenuItem::with_id("action.settings", "节点设置", true, None);
-    let permissions = MenuItem::with_id("action.permissions", "权限引导", true, None);
     let quit = MenuItem::with_id("action.quit", "退出", true, None);
 
     menu.append(&status)?;
@@ -839,7 +882,11 @@ fn build_menu(state: &SharedState) -> Result<(Menu, TrayMenuItems)> {
     menu.append(&node_info)?;
     menu.append(&logs)?;
     menu.append(&settings)?;
-    menu.append(&permissions)?;
+    #[cfg(target_os = "macos")]
+    {
+        let permissions = MenuItem::with_id("action.permissions", "权限引导", true, None);
+        menu.append(&permissions)?;
+    }
     menu.append(&about)?;
     menu.append(&PredefinedMenuItem::separator())?;
     menu.append(&quit)?;
@@ -925,7 +972,7 @@ fn menu_snapshot(state: &SharedState) -> MenuSnapshot {
     };
     let client_id = if config.client_id.trim().is_empty() {
         if status.client_id.trim().is_empty() {
-            "未知".to_string()
+            "".to_string()
         } else {
             status.client_id
         }
@@ -988,7 +1035,7 @@ fn render_settings_html(state: &SharedState) -> String {
             app_css => load_settings_resource("web/settings/app.css"),
             server_url => config.server_url,
             client_name => config.client_name,
-            client_id => config.client_id,
+            client_id => if config.client_id.trim().is_empty() { "" } else { config.client_id.as_str() },
             device_id => config.device_id,
             auto_pref => selected(&config.browser_preference, "auto"),
             chrome_pref => selected(&config.browser_preference, "chrome"),
@@ -1065,23 +1112,22 @@ fn include_base64_icon() -> &'static str {
 }
 
 fn load_settings_resource(relative: &str) -> String {
-    let root = settings_root();
-    let path = root.join(relative);
-    fs::read_to_string(&path).unwrap_or_else(|error| {
-        format!("/* failed to load {}: {} */", path.display(), html_escape(&error.to_string()))
-    })
+    match relative {
+        "web/settings/app.css" => include_str!("../../../web/settings/app.css").to_string(),
+        _ => format!("/* embedded resource not found: {} */", html_escape(relative)),
+    }
 }
 
 fn render_template(relative: &str, ctx: minijinja::Value) -> String {
-    let root = settings_root();
-    let path = root.join(relative);
-    let template = fs::read_to_string(&path).unwrap_or_else(|error| {
-        format!(
-            "<!doctype html><html><body><pre>failed to load template {}: {}</pre></body></html>",
-            html_escape(&path.display().to_string()),
-            html_escape(&error.to_string())
-        )
-    });
+    let template = match relative {
+        "web/settings/templates/settings.html" => include_str!("../../../web/settings/templates/settings.html").to_string(),
+        "web/settings/templates/permissions.html" => include_str!("../../../web/settings/templates/permissions.html").to_string(),
+        "web/settings/templates/about.html" => include_str!("../../../web/settings/templates/about.html").to_string(),
+        _ => format!(
+            "<!doctype html><html><body><pre>embedded template not found: {}</pre></body></html>",
+            html_escape(relative)
+        ),
+    };
 
     let mut env = Environment::new();
     env.set_auto_escape_callback(|_| minijinja::AutoEscape::Html);
@@ -1103,28 +1149,16 @@ fn render_template(relative: &str, ctx: minijinja::Value) -> String {
     }
 }
 
-fn settings_root() -> PathBuf {
-    let mut candidates = Vec::new();
-    if let Ok(root) = std::env::var("DUX_AI_NODE_ROOT") {
-        candidates.push(PathBuf::from(root));
+#[cfg(target_os = "windows")]
+fn webview_data_dir(name: &str) -> PathBuf {
+    if let Ok(paths) = node_paths() {
+        let dir = paths.data_dir.join("webview").join(name);
+        let _ = fs::create_dir_all(&dir);
+        return dir;
     }
-    if let Ok(exe) = std::env::current_exe() {
-        if let Some(dir) = exe.parent() {
-            candidates.push(dir.to_path_buf());
-            candidates.push(dir.join("../Resources"));
-            candidates.push(dir.join("resources"));
-            candidates.push(dir.join("../resources"));
-        }
-    }
-    candidates.push(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../.."));
-
-    for candidate in candidates {
-        if candidate.join("web/settings/templates/settings.html").exists() {
-            return candidate;
-        }
-    }
-
-    PathBuf::from(".")
+    let dir = std::env::temp_dir().join("dux-ai-node-webview").join(name);
+    let _ = fs::create_dir_all(&dir);
+    dir
 }
 
 fn selected(current: &str, expected: &str) -> &'static str {
