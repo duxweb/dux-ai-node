@@ -11,7 +11,6 @@ use uuid::Uuid;
 #[serde(default)]
 pub struct NodeConfig {
     pub server_url: String,
-    pub token: String,
     pub device_id: String,
     pub client_id: String,
     pub client_name: String,
@@ -26,7 +25,6 @@ impl Default for NodeConfig {
     fn default() -> Self {
         Self {
             server_url: String::new(),
-            token: String::new(),
             device_id: Uuid::now_v7().to_string(),
             client_id: String::new(),
             client_name: default_client_name(),
@@ -83,7 +81,6 @@ impl NodeConfig {
     pub fn set_value(&mut self, key: &str, value: &str) -> anyhow::Result<()> {
         match key {
             "server_url" => self.server_url = value.trim().to_string(),
-            "token" => self.token = value.trim().to_string(),
             "device_id" => self.device_id = value.trim().to_string(),
             "client_name" => self.client_name = value.trim().to_string(),
             "browser_preference" => self.browser_preference = value.trim().to_string(),

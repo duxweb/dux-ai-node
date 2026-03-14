@@ -55,13 +55,9 @@ static OUTBOUND_TX: Lazy<Mutex<Option<mpsc::UnboundedSender<Value>>>> =
 
 pub async fn ensure_registration(config: &mut NodeConfig) -> anyhow::Result<DeviceRegistration> {
     let server_url = config.server_url.trim();
-    let api_token = if config.token.trim().is_empty() {
-        config.device_id.trim()
-    } else {
-        config.token.trim()
-    };
-    if server_url.is_empty() || api_token.is_empty() {
-        anyhow::bail!("server_url and device_id/token are required before registration");
+    let auth_token = config.device_id.trim();
+    if server_url.is_empty() || auth_token.is_empty() {
+        anyhow::bail!("server_url and device_id are required before registration");
     }
 
     let client = Client::builder().build().context("failed to build reqwest client")?;
@@ -85,7 +81,7 @@ pub async fn ensure_registration(config: &mut NodeConfig) -> anyhow::Result<Devi
     let url = format!("{}/agent/v1/devices/register", server_url.trim_end_matches('/'));
     let response = client
         .post(url)
-        .bearer_auth(api_token)
+        .bearer_auth(auth_token)
         .json(&payload)
         .send()
         .await
@@ -441,20 +437,16 @@ fn status_from_snapshot(
 
 async fn fetch_device_snapshot(config: &NodeConfig) -> anyhow::Result<DeviceRegistration> {
     let server_url = config.server_url.trim();
-    let api_token = if config.token.trim().is_empty() {
-        config.device_id.trim()
-    } else {
-        config.token.trim()
-    };
-    if server_url.is_empty() || api_token.is_empty() {
-        anyhow::bail!("server_url and device_id/token are required before fetching device snapshot");
+    let auth_token = config.device_id.trim();
+    if server_url.is_empty() || auth_token.is_empty() {
+        anyhow::bail!("server_url and device_id are required before fetching device snapshot");
     }
 
     let url = format!("{}/agent/v1/devices", server_url.trim_end_matches('/'));
     let client = Client::builder().build().context("failed to build reqwest client")?;
     let response = client
         .get(url)
-        .bearer_auth(api_token)
+        .bearer_auth(auth_token)
         .send()
         .await
         .context("device list request failed")?;

@@ -77,7 +77,6 @@ async fn main() -> Result<()> {
                 if let Some(key) = key {
                     let value = match key.as_str() {
                         "server_url" => config.server_url.clone(),
-                        "token" => config.token.clone(),
                         "node_token" => config.node_token.clone(),
                         "device_id" => config.device_id.clone(),
                         "client_id" => {
