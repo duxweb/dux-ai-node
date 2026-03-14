@@ -16,6 +16,8 @@ use image::ImageFormat;
 use minijinja::{context, Environment};
 #[cfg(target_os = "windows")]
 use std::fs;
+#[cfg(target_os = "windows")]
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use tao::dpi::LogicalSize;
 use tao::event::{Event, StartCause, WindowEvent};
@@ -398,46 +400,40 @@ fn run_tray(config_path: std::path::PathBuf, config: NodeConfig) -> Result<()> {
             Event::UserEvent(UserEvent::ShowPermissions) => {
                 #[cfg(target_os = "windows")]
                 {
-                    return;
+                    // Windows does not use the macOS-style permissions guide window.
                 }
-                if permissions_webview.is_some() {
-                    drop(permissions_webview.take());
-                    drop(permissions_window.take());
-                }
-                if permissions_webview.is_none() {
-                    let window = WindowBuilder::new()
-                        .with_title("Dux AI Node 权限")
-                        .with_inner_size(LogicalSize::new(760.0, 560.0))
-                        .with_visible(true)
-                        .build(event_loop)
-                        .expect("failed to build permissions window");
-
-                    let html = render_permissions_html();
-                    let nav_state = state.clone();
-                    let nav_proxy = proxy.clone();
-                    #[cfg(not(target_os = "windows"))]
-                    let builder = WebViewBuilder::new(&window);
-                    #[cfg(target_os = "windows")]
-                    let mut builder = WebViewBuilder::new(&window);
-                    #[cfg(target_os = "windows")]
-                    {
-                        if let Some(context) = permissions_context.as_mut() {
-                            builder = builder.with_web_context(context);
-                        }
+                #[cfg(not(target_os = "windows"))]
+                {
+                    if permissions_webview.is_some() {
+                        drop(permissions_webview.take());
+                        drop(permissions_window.take());
                     }
-                    let webview = builder
-                        .with_navigation_handler(move |url| {
-                            handle_navigation(&nav_state, &nav_proxy, url)
-                        })
-                        .with_html(&html)
-                        .build()
-                        .expect("failed to build permissions webview");
+                    if permissions_webview.is_none() {
+                        let window = WindowBuilder::new()
+                            .with_title("Dux AI Node 权限")
+                            .with_inner_size(LogicalSize::new(760.0, 560.0))
+                            .with_visible(true)
+                            .build(event_loop)
+                            .expect("failed to build permissions window");
 
-                    permissions_window = Some(window);
-                    permissions_webview = Some(webview);
-                } else if let Some(window) = &permissions_window {
-                    let _ = window.set_visible(true);
-                    window.set_focus();
+                        let html = render_permissions_html();
+                        let nav_state = state.clone();
+                        let nav_proxy = proxy.clone();
+                        let builder = WebViewBuilder::new(&window);
+                        let webview = builder
+                            .with_navigation_handler(move |url| {
+                                handle_navigation(&nav_state, &nav_proxy, url)
+                            })
+                            .with_html(&html)
+                            .build()
+                            .expect("failed to build permissions webview");
+
+                        permissions_window = Some(window);
+                        permissions_webview = Some(webview);
+                    } else if let Some(window) = &permissions_window {
+                        let _ = window.set_visible(true);
+                        window.set_focus();
+                    }
                 }
             }
             Event::UserEvent(UserEvent::RefreshPermissions) => {
