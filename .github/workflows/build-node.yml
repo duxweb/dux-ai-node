@@ -27,7 +27,9 @@ jobs:
             libxrandr-dev \
             libpipewire-0.3-dev \
             libdrm-dev \
-            libgbm-dev
+            libgbm-dev \
+            libegl1-mesa-dev \
+            libgl1-mesa-dev
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - run: ./scripts/build-linux.sh
