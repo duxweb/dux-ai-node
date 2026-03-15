@@ -82,10 +82,14 @@
 
       <div class="actions">
         <button class="btn btn-primary" type='submit'>保存</button>
+        {% if show_permissions %}
         <a class="btn" href='dux://open-permissions'>权限引导</a>
+        {% endif %}
       </div>
 
+      {% if show_permissions %}
       <p class="footnote">保存后立即生效。需要系统授权时请通过「权限引导」处理。</p>
+      {% endif %}
     </form>
   </div>
 </body>

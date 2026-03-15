@@ -1148,6 +1148,7 @@ fn render_settings_html(state: &SharedState) -> String {
             log_debug => selected(&config.log_level, "debug"),
             log_warn => selected(&config.log_level, "warn"),
             log_error => selected(&config.log_level, "error"),
+            show_permissions => cfg!(target_os = "macos"),
             connected => if status.connected { "已连接" } else { "未连接" },
             latency => status.latency_ms.map(|item| format!("{} ms", item)).unwrap_or_else(|| "未知".to_string()),
             runtime_mode => browser.runtime_mode,
