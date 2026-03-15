@@ -16,15 +16,6 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'pnpm'
-          cache-dependency-path: pnpm-lock.yaml
-      - run: pnpm install --frozen-lockfile
       - run: ./scripts/build-linux.sh
       - uses: actions/upload-artifact@v4
         with:
@@ -43,15 +34,6 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'pnpm'
-          cache-dependency-path: pnpm-lock.yaml
-      - run: pnpm install --frozen-lockfile
       - run: ./scripts/build-windows.ps1
         shell: pwsh
       - uses: actions/upload-artifact@v4
@@ -66,20 +48,11 @@ jobs:
           files: dist/windows/dux-ai-node-x86_64-pc-windows-msvc.zip
 
   macos-intel:
-    runs-on: macos-13
+    runs-on: macos-15-intel
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'pnpm'
-          cache-dependency-path: pnpm-lock.yaml
-      - run: pnpm install --frozen-lockfile
       - run: ./scripts/build-macos-app.sh
       - uses: actions/upload-artifact@v4
         with:
@@ -93,20 +66,11 @@ jobs:
           files: dist/Dux-AI-Node-macos-x86_64.zip
 
   macos-arm64:
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'pnpm'
-          cache-dependency-path: pnpm-lock.yaml
-      - run: pnpm install --frozen-lockfile
       - run: ./scripts/build-macos-app.sh
       - uses: actions/upload-artifact@v4
         with:
