@@ -6,5 +6,6 @@ pub mod runtime;
 pub use config::{default_client_name, node_paths, NodeConfig, NodePaths};
 pub use logging::{resolve_log_files, LogFiles};
 pub use protocol::{
-    BoundSessionState, ControlMessage, PingMessage, PongMessage, RuntimeStatus, StatusMessage,
+    BoundSessionEntry, BoundSessionState, ControlMessage, PingMessage, PongMessage,
+    RuntimeStatus, StatusMessage,
 };

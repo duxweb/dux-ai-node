@@ -1,4 +1,4 @@
-use crate::{BoundSessionState, ControlMessage, NodeConfig, RuntimeStatus, StatusMessage};
+use crate::{BoundSessionEntry, BoundSessionState, ControlMessage, NodeConfig, RuntimeStatus, StatusMessage};
 use anyhow::Context;
 use base64::Engine;
 use futures_util::{SinkExt, StreamExt};
@@ -28,6 +28,10 @@ pub struct DeviceRegistration {
     pub latency_ms: Option<u64>,
     pub bound_session_id: Option<i64>,
     pub bound_session_title: Option<String>,
+    #[serde(default)]
+    pub bound_session_count: usize,
+    #[serde(default)]
+    pub bound_sessions: Vec<BoundSessionEntry>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -433,6 +437,21 @@ fn status_from_snapshot(
     snapshot: Option<&DeviceRegistration>,
     latency_ms: Option<u64>,
 ) -> RuntimeStatus {
+    let bound_sessions = snapshot
+        .map(|item| {
+            if !item.bound_sessions.is_empty() {
+                return item.bound_sessions.clone();
+            }
+            if let Some(session_id) = item.bound_session_id {
+                return vec![BoundSessionEntry {
+                    session_id,
+                    session_title: item.bound_session_title.clone().unwrap_or_else(|| format!("会话 #{}", session_id)),
+                }];
+            }
+            vec![]
+        })
+        .unwrap_or_default();
+
     RuntimeStatus {
         connected: true,
         latency_ms,
@@ -444,12 +463,11 @@ fn status_from_snapshot(
             config.client_id.clone()
         },
         client_name: config.client_name.clone(),
-        bound_session: snapshot
-            .map(|item| BoundSessionState {
-                session_id: item.bound_session_id,
-                session_title: item.bound_session_title.clone(),
-            })
-            .unwrap_or_default(),
+        bound_session: bound_sessions.first().map(|item| BoundSessionState {
+            session_id: Some(item.session_id),
+            session_title: Some(item.session_title.clone()),
+        }).unwrap_or_default(),
+        bound_sessions,
     }
 }
 
@@ -495,6 +513,7 @@ pub fn status_snapshot(config: &NodeConfig) -> RuntimeStatus {
         client_id,
         client_name: config.client_name.clone(),
         bound_session: BoundSessionState::default(),
+        bound_sessions: vec![],
     }
 }
 

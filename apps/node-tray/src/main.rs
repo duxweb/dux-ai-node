@@ -10,7 +10,7 @@ use dux_ai_node_core::{
         ensure_registration, publish_action_result, run_runtime_with_updates, status_snapshot,
         RuntimeUpdate,
     },
-    BoundSessionState, NodeConfig, RuntimeStatus,
+    BoundSessionEntry, BoundSessionState, NodeConfig, RuntimeStatus,
 };
 use image::ImageFormat;
 use minijinja::{context, Environment};
@@ -94,7 +94,8 @@ struct SharedState {
 struct TrayMenuItems {
     status: MenuItem,
     latency: MenuItem,
-    binding: MenuItem,
+    binding: Submenu,
+    binding_sessions: Arc<Mutex<Vec<MenuItem>>>,
     client_name: MenuItem,
     client_id: MenuItem,
     device_id: MenuItem,
@@ -530,6 +531,9 @@ fn run_tray(config_path: std::path::PathBuf, config: NodeConfig) -> Result<()> {
                     {
                         next_status.bound_session = status.bound_session.clone();
                     }
+                    if next_status.bound_sessions.is_empty() && !status.bound_sessions.is_empty() {
+                        next_status.bound_sessions = status.bound_sessions.clone();
+                    }
                     *status = next_status;
                 }
                 let _ = refresh_menu_labels(&items, &state);
@@ -790,12 +794,12 @@ fn build_menu(state: &SharedState) -> Result<(Menu, TrayMenuItems)> {
         false,
         None,
     );
-    let binding = MenuItem::with_id(
+    let binding = Submenu::with_id_and_items(
         "status.binding",
         format!("绑定状态: {}", snapshot.binding_text),
-        false,
-        None,
-    );
+        true,
+        &[],
+    )?;
 
     let browser_preference_auto =
         CheckMenuItem::with_id("config.browser_preference.auto", "自动", true, false, None);
@@ -906,6 +910,7 @@ fn build_menu(state: &SharedState) -> Result<(Menu, TrayMenuItems)> {
         status,
         latency,
         binding,
+        binding_sessions: Arc::new(Mutex::new(vec![])),
         client_name,
         client_id,
         device_id,
@@ -931,6 +936,7 @@ fn refresh_menu_labels(items: &TrayMenuItems, state: &SharedState) -> Result<()>
     items.status.set_text(format!("连接状态: {}", snapshot.status_text));
     items.latency.set_text(format!("连接延迟: {}", snapshot.latency_text));
     items.binding.set_text(format!("绑定状态: {}", snapshot.binding_text));
+    refresh_binding_sessions(items, &snapshot.bound_sessions)?;
     items.client_name.set_text(format!("节点名称: {}", snapshot.client_name));
     items.client_id.set_text(format!("连接 ID: {}", snapshot.client_id));
     items.device_id.set_text(format!("设备 ID: {}", snapshot.device_id));
@@ -954,6 +960,7 @@ struct MenuSnapshot {
     status_text: String,
     latency_text: String,
     binding_text: String,
+    bound_sessions: Vec<String>,
     client_name: String,
     client_id: String,
     device_id: String,
@@ -971,7 +978,8 @@ fn menu_snapshot(state: &SharedState) -> MenuSnapshot {
         if status.connected { "已连接".to_string() } else { "未连接".to_string() };
     let latency_text =
         status.latency_ms.map(|item| format!("{} ms", item)).unwrap_or_else(|| "未知".to_string());
-    let binding_text = format_bound_session(&status.bound_session);
+    let binding_text = format_bound_status(&status.bound_sessions, &status.bound_session);
+    let bound_sessions = format_bound_sessions(&status.bound_sessions, &status.bound_session);
     let client_name = if config.client_name.trim().is_empty() {
         if status.client_name.trim().is_empty() {
             "未知".to_string()
@@ -995,6 +1003,7 @@ fn menu_snapshot(state: &SharedState) -> MenuSnapshot {
         status_text,
         latency_text,
         binding_text,
+        bound_sessions,
         client_name,
         client_id,
         device_id: if config.device_id.trim().is_empty() {
@@ -1020,6 +1029,50 @@ fn format_bound_session(bound: &BoundSessionState) -> String {
         (Some(id), _) => format!("会话 #{}", id),
         _ => "未绑定".to_string(),
     }
+}
+
+fn format_bound_status(bound_sessions: &[BoundSessionEntry], bound: &BoundSessionState) -> String {
+    if !bound_sessions.is_empty() {
+        return "已绑定".to_string();
+    }
+    if bound.session_id.is_some() || bound.session_title.as_deref().is_some_and(|title| !title.trim().is_empty()) {
+        return "已绑定".to_string();
+    }
+    "未绑定".to_string()
+}
+
+fn format_bound_sessions(bound_sessions: &[BoundSessionEntry], bound: &BoundSessionState) -> Vec<String> {
+    if !bound_sessions.is_empty() {
+        return bound_sessions
+            .iter()
+            .map(|item| format!("{} (#{} )", item.session_title, item.session_id))
+            .collect();
+    }
+    if bound.session_id.is_some() || bound.session_title.as_deref().is_some_and(|title| !title.trim().is_empty()) {
+        return vec![format_bound_session(bound)];
+    }
+    vec![]
+}
+
+fn refresh_binding_sessions(items: &TrayMenuItems, sessions: &[String]) -> Result<()> {
+    let mut current = items.binding_sessions.lock().expect("binding sessions lock");
+    for item in current.drain(..) {
+        let _ = items.binding.remove(&item);
+    }
+
+    if sessions.is_empty() {
+        let item = MenuItem::with_id("status.binding.empty", "暂无绑定会话", false, None);
+        items.binding.append(&item)?;
+        current.push(item);
+        return Ok(());
+    }
+
+    for (index, title) in sessions.iter().enumerate() {
+        let item = MenuItem::with_id(format!("status.binding.{}", index), title, false, None);
+        items.binding.append(&item)?;
+        current.push(item);
+    }
+    Ok(())
 }
 
 fn build_icon() -> Result<Icon> {
@@ -1099,7 +1152,16 @@ fn render_settings_html(state: &SharedState) -> String {
             latency => status.latency_ms.map(|item| format!("{} ms", item)).unwrap_or_else(|| "未知".to_string()),
             runtime_mode => browser.runtime_mode,
             browser_backend => browser.browser_backend,
-            binding => format_bound_session(&status.bound_session),
+            binding => {
+                let sessions = format_bound_sessions(&status.bound_sessions, &status.bound_session);
+                if sessions.is_empty() {
+                    "未绑定".to_string()
+                } else if sessions.len() == 1 {
+                    sessions[0].clone()
+                } else {
+                    format!("已绑定 {} 个会话", sessions.len())
+                }
+            },
         },
     )
 }

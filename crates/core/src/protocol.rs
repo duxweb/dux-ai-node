@@ -7,6 +7,12 @@ pub struct BoundSessionState {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct BoundSessionEntry {
+    pub session_id: i64,
+    pub session_title: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct RuntimeStatus {
     pub connected: bool,
     pub latency_ms: Option<u64>,
@@ -15,6 +21,7 @@ pub struct RuntimeStatus {
     pub client_id: String,
     pub client_name: String,
     pub bound_session: BoundSessionState,
+    pub bound_sessions: Vec<BoundSessionEntry>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
