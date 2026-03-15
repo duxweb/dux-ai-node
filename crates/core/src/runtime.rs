@@ -165,7 +165,7 @@ pub async fn run_runtime_with_updates(
                     "type": "ping",
                     "id": format!("ping-{}", uuid::Uuid::now_v7())
                 });
-                writer.send(Message::Text(ping.to_string())).await.context("failed to send ping")?;
+                writer.send(Message::Text(ping.to_string().into())).await.context("failed to send ping")?;
                 last_ping_at = Some(Instant::now());
             }
             _ = status_timer.tick() => {
@@ -185,7 +185,7 @@ pub async fn run_runtime_with_updates(
             }
             outbound = outbound_rx.recv() => {
                 if let Some(outbound) = outbound {
-                    writer.send(Message::Text(outbound.to_string())).await.context("failed to send outbound websocket message")?;
+                    writer.send(Message::Text(outbound.to_string().into())).await.context("failed to send outbound websocket message")?;
                 }
             }
             incoming = reader.next() => {
@@ -348,7 +348,7 @@ async fn publish_status(
         }
     });
     writer
-        .send(Message::Text(status_payload.to_string()))
+        .send(Message::Text(status_payload.to_string().into()))
         .await
         .context("failed to publish status")?;
     Ok(())

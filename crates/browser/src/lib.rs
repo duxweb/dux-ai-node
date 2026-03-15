@@ -2,7 +2,6 @@ use anyhow::Context;
 use base64::Engine;
 use dux_ai_node_core::NodeConfig;
 use dux_ai_node_platform::ensure_permission;
-use screenshots::Screen;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::fs;
@@ -13,6 +12,8 @@ use std::time::{Duration, Instant};
 use sysinfo::{Disks, System};
 use tracing::info;
 use wait_timeout::ChildExt;
+use xcap::image::ImageEncoder;
+use xcap::Monitor;
 
 mod backend;
 mod platform_helper;
@@ -347,40 +348,38 @@ fn execute_system_info() -> anyhow::Result<ActionResponse> {
 }
 
 fn execute_screen_capture() -> anyhow::Result<ActionResponse> {
-    let screens = Screen::all().context("failed to enumerate screens")?;
+    let screens = Monitor::all().context("failed to enumerate screens")?;
     let screen = screens.first().context("no screen available")?;
-    let image = screen.capture().context("failed to capture screen")?;
+    let image = screen.capture_image().context("failed to capture screen")?;
     let width = image.width();
     let height = image.height();
     let max_side = 1600u32;
-    let mut dynamic = screenshots::image::DynamicImage::ImageRgba8(image);
+    let mut dynamic = xcap::image::DynamicImage::ImageRgba8(image);
     if width > max_side || height > max_side {
-        dynamic =
-            dynamic.resize(max_side, max_side, screenshots::image::imageops::FilterType::Lanczos3);
+        dynamic = dynamic.resize(max_side, max_side, xcap::image::imageops::FilterType::Lanczos3);
     }
-    let rgb = dynamic.to_rgb8();
-    let out_width = rgb.width();
-    let out_height = rgb.height();
+    let rgba = dynamic.to_rgba8();
+    let out_width = rgba.width();
+    let out_height = rgba.height();
     let mut bytes = Vec::new();
-    let mut encoder =
-        screenshots::image::codecs::jpeg::JpegEncoder::new_with_quality(&mut bytes, 82);
+    let encoder = xcap::image::codecs::png::PngEncoder::new(&mut bytes);
     encoder
-        .encode(&rgb, out_width, out_height, screenshots::image::ColorType::Rgb8)
+        .write_image(&rgba, out_width, out_height, xcap::image::ColorType::Rgba8.into())
         .context("failed to encode screenshot")?;
     let base64 = base64::engine::general_purpose::STANDARD.encode(&bytes);
 
     Ok(ActionResponse {
         result: json!({
             "summary": "已截取当前屏幕",
-            "mime_type": "image/jpeg",
+            "mime_type": "image/png",
             "width": out_width,
             "height": out_height,
         }),
         artifacts: vec![json!({
             "type": "image",
-            "url": format!("data:image/jpeg;base64,{}", base64),
-            "mime_type": "image/jpeg",
-            "filename": "screen-capture.jpg",
+            "url": format!("data:image/png;base64,{}", base64),
+            "mime_type": "image/png",
+            "filename": "screen-capture.png",
             "bytes": bytes.len(),
             "width": out_width,
             "height": out_height,
