@@ -465,6 +465,10 @@ fn detect_chrome_path() -> Option<PathBuf> {
         "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
         "C:/Program Files/Google/Chrome/Application/chrome.exe",
         "C:/Program Files (x86)/Google/Chrome/Application/chrome.exe",
+        "/usr/bin/chromium",
+        "/usr/bin/chromium-browser",
+        "/usr/bin/google-chrome",
+        "/usr/bin/google-chrome-stable",
     ])
 }
 
@@ -473,6 +477,8 @@ fn detect_edge_path() -> Option<PathBuf> {
         "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
         "C:/Program Files/Microsoft/Edge/Application/msedge.exe",
         "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe",
+        "/usr/bin/microsoft-edge",
+        "/usr/bin/microsoft-edge-stable",
     ])
 }
 

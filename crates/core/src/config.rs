@@ -106,23 +106,28 @@ pub struct NodePaths {
 }
 
 pub fn node_paths() -> anyhow::Result<NodePaths> {
+    let config_dir_override = std::env::var("DUX_AI_NODE_CONFIG_DIR").ok().filter(|value| !value.trim().is_empty()).map(PathBuf::from);
+    let data_dir_override = std::env::var("DUX_AI_NODE_DATA_DIR").ok().filter(|value| !value.trim().is_empty()).map(PathBuf::from);
+    let log_dir_override = std::env::var("DUX_AI_NODE_LOG_DIR").ok().filter(|value| !value.trim().is_empty()).map(PathBuf::from);
+    let config_file_override = std::env::var("DUX_AI_NODE_CONFIG_FILE").ok().filter(|value| !value.trim().is_empty()).map(PathBuf::from);
+
     #[cfg(target_os = "windows")]
     {
         let config_root = std::env::var("APPDATA").context("APPDATA is not set")?;
         let data_root = std::env::var("LOCALAPPDATA").context("LOCALAPPDATA is not set")?;
-        let config_dir = PathBuf::from(config_root).join("DuxAINode");
-        let data_dir = PathBuf::from(data_root).join("DuxAINode");
-        let log_dir = data_dir.join("logs");
-        let config_file = config_dir.join("config.toml");
+        let config_dir = config_dir_override.unwrap_or_else(|| PathBuf::from(config_root).join("DuxAINode"));
+        let data_dir = data_dir_override.unwrap_or_else(|| PathBuf::from(data_root).join("DuxAINode"));
+        let log_dir = log_dir_override.unwrap_or_else(|| data_dir.join("logs"));
+        let config_file = config_file_override.unwrap_or_else(|| config_dir.join("config.toml"));
         return Ok(NodePaths { config_dir, data_dir, log_dir, config_file });
     }
 
     let dirs = ProjectDirs::from("plus", "dux", "dux-ai-node")
         .ok_or_else(|| anyhow::anyhow!("unable to resolve project directories"))?;
-    let config_dir = dirs.config_dir().to_path_buf();
-    let data_dir = dirs.data_dir().to_path_buf();
-    let log_dir = dirs.data_local_dir().join("logs");
-    let config_file = config_dir.join("config.toml");
+    let config_dir = config_dir_override.unwrap_or_else(|| dirs.config_dir().to_path_buf());
+    let data_dir = data_dir_override.unwrap_or_else(|| dirs.data_dir().to_path_buf());
+    let log_dir = log_dir_override.unwrap_or_else(|| dirs.data_local_dir().join("logs"));
+    let config_file = config_file_override.unwrap_or_else(|| config_dir.join("config.toml"));
     Ok(NodePaths { config_dir, data_dir, log_dir, config_file })
 }
 
