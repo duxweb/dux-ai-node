@@ -3,7 +3,8 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 BIN_NAME="dux-ai-node-daemon"
-TARGET="${TARGET:-$(rustc -vV | awk '/host:/ {print $2}') }"
+TARGET="${TARGET:-$(rustc -vV | awk '/host:/ {print $2}')}"
+TARGET="$(printf '%s' "$TARGET" | xargs)"
 DIST_DIR="$ROOT/dist/linux/$TARGET"
 HOST_OS="$(uname -s)"
 BIN=""
