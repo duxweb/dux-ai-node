@@ -14,8 +14,8 @@ use tokio::runtime::{Builder as RuntimeBuilder, Handle};
 use tokio::task::JoinHandle;
 use tokio::time::{timeout, Duration};
 
-use crate::ActionResponse;
 use crate::platform_helper::execute_helper_action;
+use crate::ActionResponse;
 
 static SESSION: Lazy<Mutex<Option<ChromiumoxideRuntime>>> = Lazy::new(|| Mutex::new(None));
 
@@ -106,7 +106,8 @@ async fn ensure_runtime(config: &NodeConfig) -> Result<(Page, String)> {
 
 async fn launch_runtime(config: &NodeConfig) -> Result<ChromiumoxideRuntime> {
     let browser_config = build_browser_config(config)?;
-    let (browser, mut handler) = Browser::launch(browser_config).await.context("failed to launch chromiumoxide browser")?;
+    let (browser, mut handler) =
+        Browser::launch(browser_config).await.context("failed to launch chromiumoxide browser")?;
 
     let handler_task = tokio::spawn(async move {
         while let Some(event) = handler.next().await {
@@ -116,10 +117,8 @@ async fn launch_runtime(config: &NodeConfig) -> Result<ChromiumoxideRuntime> {
         }
     });
 
-    let page = browser
-        .new_page("about:blank")
-        .await
-        .context("failed to create chromiumoxide page")?;
+    let page =
+        browser.new_page("about:blank").await.context("failed to create chromiumoxide page")?;
 
     if !is_headless(config) {
         focus_browser_window(config, None);
@@ -159,7 +158,11 @@ async fn execute_launch((page, _): (Page, String), config: &NodeConfig) -> Resul
     })
 }
 
-async fn execute_goto((page, _): (Page, String), config: &NodeConfig, payload: &Value) -> Result<ActionResponse> {
+async fn execute_goto(
+    (page, _): (Page, String),
+    config: &NodeConfig,
+    payload: &Value,
+) -> Result<ActionResponse> {
     let url = payload.get("url").and_then(Value::as_str).unwrap_or("").trim();
     if url.is_empty() {
         anyhow::bail!("url 不能为空")
@@ -188,7 +191,11 @@ async fn execute_goto((page, _): (Page, String), config: &NodeConfig, payload: &
     })
 }
 
-async fn execute_read((page, _): (Page, String), config: &NodeConfig, payload: &Value) -> Result<ActionResponse> {
+async fn execute_read(
+    (page, _): (Page, String),
+    config: &NodeConfig,
+    payload: &Value,
+) -> Result<ActionResponse> {
     navigate_if_needed(&page, payload).await?;
     if !is_headless(config) {
         let title = page_title(&page).await.unwrap_or_default();
@@ -198,12 +205,20 @@ async fn execute_read((page, _): (Page, String), config: &NodeConfig, payload: &
     build_extract_response(page, config, payload, true).await
 }
 
-async fn execute_extract((page, _): (Page, String), config: &NodeConfig, payload: &Value) -> Result<ActionResponse> {
+async fn execute_extract(
+    (page, _): (Page, String),
+    config: &NodeConfig,
+    payload: &Value,
+) -> Result<ActionResponse> {
     navigate_if_needed(&page, payload).await?;
     build_extract_response(page, config, payload, false).await
 }
 
-async fn execute_click((page, _): (Page, String), config: &NodeConfig, payload: &Value) -> Result<ActionResponse> {
+async fn execute_click(
+    (page, _): (Page, String),
+    config: &NodeConfig,
+    payload: &Value,
+) -> Result<ActionResponse> {
     let selector = payload.get("selector").and_then(Value::as_str).unwrap_or("").trim();
     if selector.is_empty() {
         anyhow::bail!("selector 不能为空")
@@ -237,7 +252,11 @@ async fn execute_click((page, _): (Page, String), config: &NodeConfig, payload: 
     })
 }
 
-async fn execute_type((page, _): (Page, String), config: &NodeConfig, payload: &Value) -> Result<ActionResponse> {
+async fn execute_type(
+    (page, _): (Page, String),
+    config: &NodeConfig,
+    payload: &Value,
+) -> Result<ActionResponse> {
     let selector = payload.get("selector").and_then(Value::as_str).unwrap_or("").trim();
     if selector.is_empty() {
         anyhow::bail!("selector 不能为空")
@@ -288,7 +307,11 @@ async fn execute_type((page, _): (Page, String), config: &NodeConfig, payload: &
     })
 }
 
-async fn execute_screenshot((page, _): (Page, String), config: &NodeConfig, _payload: &Value) -> Result<ActionResponse> {
+async fn execute_screenshot(
+    (page, _): (Page, String),
+    config: &NodeConfig,
+    _payload: &Value,
+) -> Result<ActionResponse> {
     let params = ScreenshotParams::builder().format(CaptureScreenshotFormat::Png).build();
     let bytes = page.screenshot(params).await.context("failed to capture page screenshot")?;
     let encoded = base64::engine::general_purpose::STANDARD.encode(&bytes);
@@ -314,14 +337,22 @@ async fn execute_screenshot((page, _): (Page, String), config: &NodeConfig, _pay
     })
 }
 
-async fn build_extract_response(page: Page, config: &NodeConfig, payload: &Value, read_mode: bool) -> Result<ActionResponse> {
+async fn build_extract_response(
+    page: Page,
+    config: &NodeConfig,
+    payload: &Value,
+    read_mode: bool,
+) -> Result<ActionResponse> {
     let current_url = page.url().await?.unwrap_or_default();
     let title = page_title(&page).await.unwrap_or_default();
     let mode = payload.get("mode").and_then(Value::as_str).unwrap_or("text").trim();
     let selector = payload.get("selector").and_then(Value::as_str).unwrap_or("").trim();
 
     let result = if !selector.is_empty() {
-        let element = page.find_element(selector).await.with_context(|| format!("selector 不存在或不可用: {}", selector))?;
+        let element = page
+            .find_element(selector)
+            .await
+            .with_context(|| format!("selector 不存在或不可用: {}", selector))?;
         if mode == "html" {
             let html = element.outer_html().await?.unwrap_or_default();
             json!({
@@ -386,7 +417,11 @@ async fn navigate_if_needed(page: &Page, payload: &Value) -> Result<()> {
 }
 
 async fn wait_for_navigation_if_requested(page: &Page, payload: &Value) {
-    let wait_requested = payload.get("wait_until").and_then(Value::as_str).map(|value| !value.trim().is_empty()).unwrap_or(false);
+    let wait_requested = payload
+        .get("wait_until")
+        .and_then(Value::as_str)
+        .map(|value| !value.trim().is_empty())
+        .unwrap_or(false);
     if wait_requested {
         let _ = timeout(navigation_timeout(payload), page.wait_for_navigation()).await;
     }
@@ -491,7 +526,11 @@ fn runtime_fingerprint(config: &NodeConfig) -> String {
 }
 
 fn normalized_mode(config: &NodeConfig) -> &'static str {
-    if is_headless(config) { "headless" } else { "headed" }
+    if is_headless(config) {
+        "headless"
+    } else {
+        "headed"
+    }
 }
 
 fn is_headless(config: &NodeConfig) -> bool {
@@ -513,7 +552,10 @@ where
     if let Ok(handle) = Handle::try_current() {
         tokio::task::block_in_place(|| handle.block_on(factory()))
     } else {
-        let runtime = RuntimeBuilder::new_current_thread().enable_all().build().context("failed to create ad-hoc runtime")?;
+        let runtime = RuntimeBuilder::new_current_thread()
+            .enable_all()
+            .build()
+            .context("failed to create ad-hoc runtime")?;
         runtime.block_on(factory())
     }
 }

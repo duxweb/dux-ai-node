@@ -1,6 +1,6 @@
 # Windows UIA Helper
 
-This directory is the planned Windows companion to the macOS Swift AX helper.
+This directory is the Windows companion to the macOS Swift AX helper.
 
 ## Scope
 
@@ -23,9 +23,22 @@ Windows-only in this helper:
 - semantic element lookup
 - UI Automation tree diagnostics
 
-## Planned first commands
+## Current commands
 
+- `ui.status`
 - `ax.status`
 - `app.activate`
 - `window.focus`
+- `ui.tree`
 - `ax.tree`
+
+## Runtime
+
+- current implementation ships as `dux-node-windows-uia-helper.ps1`
+- transport is JSON request/response over stdin/stdout
+- packaged by `scripts/build-windows.ps1`
+
+## Notes
+
+- current Windows helper focuses on app/window activation and top-level window inspection
+- deeper semantic element lookup for specific desktop clients will continue to grow on top of this helper

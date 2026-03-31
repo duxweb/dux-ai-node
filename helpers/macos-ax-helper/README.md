@@ -46,8 +46,17 @@ Example response shape:
 ## First commands
 
 - `ax.status`
+- `ui.status`
 - `app.activate`
 - `window.focus`
+- `ui.find`
+- `ui.read`
+- `ui.write`
+- `ui.invoke`
+- `ui.click`
+- `ui.type_native`
+- `ui.keypress`
+- `ui.tree`
 - `ax.tree` (debug only)
 
 ## Integration target

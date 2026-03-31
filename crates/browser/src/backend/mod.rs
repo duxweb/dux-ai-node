@@ -25,3 +25,12 @@ pub fn shutdown_browser_runtime(config: &NodeConfig) {
 pub fn cleanup_browser_runtime(config: &NodeConfig) {
     chromiumoxide::cleanup_browser_runtime(config);
 }
+
+pub fn type_text(value: &str, submit: bool) -> anyhow::Result<()> {
+    let mut input = enigo_fallback::InputFallback::new()?;
+    input.text(value)?;
+    if submit {
+        input.press_enter()?;
+    }
+    Ok(())
+}

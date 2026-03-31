@@ -73,7 +73,10 @@ pub async fn ensure_registration(config: &mut NodeConfig) -> anyhow::Result<Devi
         "status": "offline",
         "capabilities": [
             "browser.launch","browser.goto","browser.read","browser.extract","browser.click","browser.type","browser.screenshot",
-            "file.list","file.stat","file.read_text","file.open","screen.capture","system.info"
+            "ui.status","app.activate","window.focus","ui.tree","ui.find","ui.read","ui.write","ui.focus","ui.invoke","ui.click","ui.type_native","ui.keypress",
+            "file.list","file.stat","file.read_text","file.open","terminal.exec","screen.capture","system.info",
+            "channel.qianniu.activate","channel.qianniu.inspect","channel.qianniu.send_text",
+            "channel.wechat.current_session","channel.wechat.search_candidates","channel.wechat.open_session","channel.wechat.prepare_text","channel.wechat.send_text"
         ],
         "settings": {
             "runtime_mode": current_runtime_mode(),
@@ -325,25 +328,28 @@ async fn publish_status(
     latency_ms: Option<u64>,
 ) -> anyhow::Result<()> {
     let status_payload = json!({
-        "type": "publish",
-        "id": format!("status-{}", uuid::Uuid::now_v7()),
-        "topic": "ai.node.device.status",
-        "payload": {
-            "client_id": config.client_id,
-            "runtime_mode": current_runtime_mode(),
-            "platform": current_platform_name(),
-            "browser_mode": config.browser_mode,
-            "browser_preference": config.browser_preference,
-            "status": "online",
-            "latency_ms": latency_ms
-        },
+    "type": "publish",
+    "id": format!("status-{}", uuid::Uuid::now_v7()),
+    "topic": "ai.node.device.status",
+    "payload": {
+        "client_id": config.client_id,
+        "runtime_mode": current_runtime_mode(),
+        "platform": current_platform_name(),
+        "browser_mode": config.browser_mode,
+        "browser_preference": config.browser_preference,
+        "status": "online",
+        "latency_ms": latency_ms
+    },
         "meta": {
             "runtime_mode": current_runtime_mode(),
             "platform": current_platform_name(),
             "latency_ms": latency_ms,
             "capabilities": [
                 "browser.launch","browser.goto","browser.read","browser.extract","browser.click","browser.type","browser.screenshot",
-                "file.list","file.stat","file.read_text","file.open","screen.capture","system.info"
+                "ui.status","app.activate","window.focus","ui.tree","ui.find","ui.read","ui.write","ui.focus","ui.invoke","ui.click","ui.type_native","ui.keypress",
+                "file.list","file.stat","file.read_text","file.open","terminal.exec","screen.capture","system.info",
+                "channel.qianniu.activate","channel.qianniu.inspect","channel.qianniu.send_text",
+                "channel.wechat.current_session","channel.wechat.search_candidates","channel.wechat.open_session","channel.wechat.prepare_text","channel.wechat.send_text"
             ]
         }
     });
@@ -464,8 +470,8 @@ fn status_from_snapshot(
         },
         client_name: config.client_name.clone(),
         bound_session: bound_sessions.first().map(|item| BoundSessionState {
-            session_id: Some(item.session_id),
-            session_title: Some(item.session_title.clone()),
+                session_id: Some(item.session_id),
+                session_title: Some(item.session_title.clone()),
         }).unwrap_or_default(),
         bound_sessions,
     }

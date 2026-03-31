@@ -19,7 +19,9 @@ pub struct PlatformUiRequest {
 pub struct PlatformUiResponse {
     pub id: Option<String>,
     pub ok: bool,
+    #[serde(default)]
     pub result: Value,
+    #[serde(default)]
     pub meta: Value,
     pub error: Option<String>,
 }
@@ -54,9 +56,26 @@ pub fn current_helper() -> Box<dyn PlatformUiHelper> {
 
 pub fn helper_summary() -> Value {
     let helper = current_helper();
+    let status = if helper.available() {
+        helper
+            .execute(&PlatformUiRequest {
+                id: Some("platform-ui-status".to_string()),
+                action: "ui.status".to_string(),
+                payload: serde_json::json!({}),
+            })
+            .ok()
+    } else {
+        None
+    };
     serde_json::json!({
         "platform": helper.platform(),
         "available": helper.available(),
+        "ready": status
+            .as_ref()
+            .and_then(|item| item.result.get("ready"))
+            .and_then(Value::as_bool)
+            .unwrap_or(false),
+        "status": status.map(|item| item.result).unwrap_or(Value::Null),
     })
 }
 
@@ -71,8 +90,8 @@ pub fn execute_helper_action(action: &str, payload: Value) -> anyhow::Result<Pla
 
 #[cfg(target_os = "macos")]
 mod macos {
-    use super::{PlatformUiHelper, PlatformUiRequest, PlatformUiResponse};
     use super::{helper_resource_root, resolve_swift_binary};
+    use super::{PlatformUiHelper, PlatformUiRequest, PlatformUiResponse};
     use anyhow::Context;
     use std::io::Write;
     use std::path::PathBuf;
@@ -97,7 +116,10 @@ mod macos {
             if raw.ok {
                 Ok(raw)
             } else {
-                anyhow::bail!(raw.error.unwrap_or_else(|| format!("macOS UI helper action failed: {}", request.action)))
+                anyhow::bail!(raw.error.unwrap_or_else(|| format!(
+                    "macOS UI helper action failed: {}",
+                    request.action
+                )))
             }
         }
     }
@@ -138,12 +160,20 @@ mod macos {
 
         if !output.status.success() && output.stdout.is_empty() {
             let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
-            anyhow::bail!(if stderr.is_empty() { "macOS UI helper exited unexpectedly".to_string() } else { stderr })
+            anyhow::bail!(if stderr.is_empty() {
+                "macOS UI helper exited unexpectedly".to_string()
+            } else {
+                stderr
+            })
         }
 
         let stdout = String::from_utf8_lossy(&output.stdout);
-        let line = stdout.lines().find(|item| !item.trim().is_empty()).context("macOS UI helper returned empty response")?;
-        let response: PlatformUiResponse = serde_json::from_str(line).context("failed to decode macOS UI helper response")?;
+        let line = stdout
+            .lines()
+            .find(|item| !item.trim().is_empty())
+            .context("macOS UI helper returned empty response")?;
+        let response: PlatformUiResponse =
+            serde_json::from_str(line).context("failed to decode macOS UI helper response")?;
         Ok(response)
     }
 
@@ -173,8 +203,8 @@ mod macos {
     fn helper_executable_path() -> Option<PathBuf> {
         let root = helper_resource_root()?;
         let candidates = [
-            root.join("helpers/macos-ax-helper/.build/release/dux-node-macos-ax-helper"),
             root.join("helpers/macos-ax-helper/.build/debug/dux-node-macos-ax-helper"),
+            root.join("helpers/macos-ax-helper/.build/release/dux-node-macos-ax-helper"),
             root.join("runtime/helpers/dux-node-macos-ax-helper"),
         ];
         candidates.into_iter().find(|path| path.exists())
@@ -184,6 +214,10 @@ mod macos {
 #[cfg(target_os = "windows")]
 mod windows {
     use super::{PlatformUiHelper, PlatformUiRequest, PlatformUiResponse};
+    use anyhow::Context;
+    use std::io::Write;
+    use std::path::PathBuf;
+    use std::process::Stdio;
 
     #[derive(Default)]
     pub struct WindowsUiHelper;
@@ -194,12 +228,92 @@ mod windows {
         }
 
         fn available(&self) -> bool {
-            false
+            helper_script_path().is_some() && resolve_powershell_binary().is_some()
         }
 
         fn execute(&self, request: &PlatformUiRequest) -> anyhow::Result<PlatformUiResponse> {
-            anyhow::bail!("Windows UI helper is planned but not implemented yet for action {}", request.action)
+            let script =
+                helper_script_path().context("failed to locate Windows UI helper script")?;
+            let powershell = resolve_powershell_binary()
+                .context("PowerShell is unavailable for Windows UI helper")?;
+            let mut child = std::process::Command::new(powershell)
+                .args([
+                    "-NoLogo",
+                    "-NoProfile",
+                    "-ExecutionPolicy",
+                    "Bypass",
+                    "-File",
+                    script.to_string_lossy().as_ref(),
+                ])
+                .stdin(Stdio::piped())
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .spawn()
+                .context("failed to spawn Windows UI helper")?;
+
+            if let Some(stdin) = child.stdin.as_mut() {
+                let payload = serde_json::to_string(request)?;
+                stdin.write_all(payload.as_bytes())?;
+                stdin.write_all(b"\n")?;
+            }
+
+            let output =
+                child.wait_with_output().context("failed to wait for Windows UI helper output")?;
+
+            if !output.status.success() && output.stdout.is_empty() {
+                let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+                anyhow::bail!(if stderr.is_empty() {
+                    format!("Windows UI helper exited unexpectedly for action {}", request.action)
+                } else {
+                    stderr
+                })
+            }
+
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            let line = stdout
+                .lines()
+                .find(|item| !item.trim().is_empty())
+                .context("Windows UI helper returned empty response")?;
+            let response: PlatformUiResponse = serde_json::from_str(line)
+                .context("failed to decode Windows UI helper response")?;
+            if response.ok {
+                Ok(response)
+            } else {
+                anyhow::bail!(response.error.clone().unwrap_or_else(|| {
+                    format!("Windows UI helper action failed: {}", request.action)
+                }))
+            }
         }
+    }
+
+    fn helper_script_path() -> Option<PathBuf> {
+        let root = super::helper_resource_root()?;
+        let candidates = [
+            root.join("helpers/windows-uia-helper/dux-node-windows-uia-helper.ps1"),
+            root.join("runtime/helpers/dux-node-windows-uia-helper.ps1"),
+        ];
+        candidates.into_iter().find(|path| path.exists())
+    }
+
+    fn resolve_powershell_binary() -> Option<String> {
+        let candidates = ["pwsh", "powershell"];
+        candidates
+            .iter()
+            .find(|candidate| {
+                std::process::Command::new(candidate)
+                    .args([
+                        "-NoLogo",
+                        "-NoProfile",
+                        "-Command",
+                        "$PSVersionTable.PSVersion.ToString()",
+                    ])
+                    .stdout(Stdio::null())
+                    .stderr(Stdio::null())
+                    .status()
+                    .map(|status| status.success())
+                    .unwrap_or(false)
+            })
+            .map(|candidate| (*candidate).to_string())
     }
 }
 
@@ -220,7 +334,10 @@ mod linux {
         }
 
         fn execute(&self, request: &PlatformUiRequest) -> anyhow::Result<PlatformUiResponse> {
-            anyhow::bail!("Linux runtime does not expose UI automation helper for action {}", request.action)
+            anyhow::bail!(
+                "Linux runtime does not expose UI automation helper for action {}",
+                request.action
+            )
         }
     }
 }
@@ -272,6 +389,14 @@ fn resolve_swift_binary() -> Option<String> {
     let candidates = ["swift", "/usr/bin/swift"];
     candidates
         .iter()
-        .find(|candidate| std::process::Command::new(candidate).arg("--version").stdout(Stdio::null()).stderr(Stdio::null()).status().map(|status| status.success()).unwrap_or(false))
+        .find(|candidate| {
+            std::process::Command::new(candidate)
+                .arg("--version")
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .status()
+                .map(|status| status.success())
+                .unwrap_or(false)
+        })
         .map(|candidate| (*candidate).to_string())
 }

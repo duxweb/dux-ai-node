@@ -174,11 +174,8 @@ fn full_disk_access_status() -> PermissionStatus {
         }
     };
 
-    let targets = [
-        home.join("Library/Mail"),
-        home.join("Library/Safari"),
-        home.join("Library/Messages"),
-    ];
+    let targets =
+        [home.join("Library/Mail"), home.join("Library/Safari"), home.join("Library/Messages")];
 
     let mut found_protected_target = false;
     let mut permission_denied = false;
@@ -211,7 +208,8 @@ fn full_disk_access_status() -> PermissionStatus {
             id: "full_disk_access".to_string(),
             status: "denied".to_string(),
             summary: "完全磁盘访问未授权".to_string(),
-            detail: "检测到受保护目录不可访问，访问 Mail、Safari、Messages 等目录时会受限。".to_string(),
+            detail: "检测到受保护目录不可访问，访问 Mail、Safari、Messages 等目录时会受限。"
+                .to_string(),
         };
     }
 
